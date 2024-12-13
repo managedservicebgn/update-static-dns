@@ -4,6 +4,10 @@ param(
     [string]$ErrorLogPath = ".\ComputerDNSErrors.json"
 )
 
+# Domain filter, e.g domain name is "mydomain.local",
+$domainTLD = "local"
+$domainSLD = "mydomain"
+
 function Write-Log {
     param(
         [Parameter(Mandatory=$true)]
@@ -25,7 +29,7 @@ function Write-Log {
 
 try {
     Write-Log "Fetching computer list from Active Directory"
-    $computers = Get-ADComputer -Filter * | Select-Object -ExpandProperty Name
+    $computers = Get-ADComputer -Filter * -SearchBase "DC=$domainSLD,DC=$domainTLD" | Select-Object -ExpandProperty Name
 
     Write-Log "Resolving DNS for computers"
     $computerInfo = $computers | ForEach-Object {
