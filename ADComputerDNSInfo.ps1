@@ -4,16 +4,16 @@ param(
     [string]$ErrorLogPath = ".\ComputerDNSErrors.json"
 )
 
-# Domain filter, e.g domain name is "mydomain.local",
+# Domain filter, e.g., domain name is "mydomain.local"
 $domainTLD = "local"
-$domainSLD = "mydomain"
+$domainSLD = "mydomain"  # Change this to your domain's SLD
 
 function Write-Log {
     param(
         [Parameter(Mandatory=$true)]
         [string]$Message,
         [Parameter(Mandatory=$false)]
-        [ValidateSet("Info","Warning","Error")]
+        [ValidateSet("Info", "Warning", "Error")]
         [string]$Level = "Info"
     )
     
@@ -28,8 +28,28 @@ function Write-Log {
 }
 
 try {
-    Write-Log "Fetching computer list from Active Directory"
-    $computers = Get-ADComputer -Filter * -SearchBase "DC=$domainSLD,DC=$domainTLD" | Select-Object -ExpandProperty Name
+    Write-Log "Fetching computer list from Active Directory using Get-ADComputer"
+
+    try {
+        # Attempt to get the computer list using Get-ADComputer
+        $computers = Get-ADComputer -Filter * -SearchBase "DC=$domainSLD,DC=$domainTLD" | Select-Object -ExpandProperty Name
+        Write-Log "Successfully fetched computer list using Get-ADComputer"
+    }
+    catch {
+        Write-Warning "Get-ADComputer failed: $($_.Exception.Message). Falling back to dsquery."
+
+        # Fallback to dsquery if Get-ADComputer fails
+        $computers = dsquery computer -limit 1000 | Where-Object { $_ -like "*DC=$domainSLD,DC=$domainTLD*" } | ForEach-Object {
+            ($_ -split ',')[0] -replace '^"CN=', '' -replace '^CN=', ''
+        }
+
+        if ($computers) {
+            Write-Log "Successfully fetched computer list using dsquery"
+        }
+        else {
+            throw "Failed to fetch computer list using both Get-ADComputer and dsquery."
+        }
+    }
 
     Write-Log "Resolving DNS for computers"
     $computerInfo = $computers | ForEach-Object {
@@ -38,7 +58,7 @@ try {
         $errorDetails = $null
 
         try {
-            $dnsResult = Resolve-DnsName $computer -Type A -ErrorAction Stop 
+            $dnsResult = Resolve-DnsName $computer -Type A -ErrorAction Stop
 
             # Construct result object
             $result = @{
