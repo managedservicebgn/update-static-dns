@@ -39,7 +39,7 @@ try {
         Write-Warning "Get-ADComputer failed: $($_.Exception.Message). Falling back to dsquery."
 
         # Fallback to dsquery if Get-ADComputer fails
-        $computers = dsquery computer -limit 1000 | Where-Object { $_ -like "*DC=$domainSLD,DC=$domainTLD*" } | ForEach-Object {
+        $computers = dsquery computer | Where-Object { $_ -like "*DC=$domainSLD,DC=$domainTLD*" } | ForEach-Object {
             ($_ -split ',')[0] -replace '^"CN=', '' -replace '^CN=', ''
         }
 
