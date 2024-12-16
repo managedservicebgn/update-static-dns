@@ -7,7 +7,13 @@ $computers = Get-Content .\ComputerDNSInfo.json | ConvertFrom-Json
 # Loop through computers and add A records
 foreach ($computer in $computers) {
     $fullDnsName = $computer.FullDNSName
-    $ipAddress = $computer.IPAddress
+
+    # Check if IPAddress is an array or a string
+    if ($computer.IPAddress -is [array]) {
+        $ipAddress = $computer.IPAddress[0]
+    } else {
+        $ipAddress = $computer.IPAddress
+    }
 
     try {
         # Try to add DNS A Record using Add-DnsServerResourceRecord
